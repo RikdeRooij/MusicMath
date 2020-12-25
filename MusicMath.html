@@ -1,0 +1,365 @@
+ <!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+
+html {
+  font-family: "Lucida Console", "Courier New", monospace;
+}
+body { background:#000000;color:#eeeeee; }
+input { background: #444; color: #fff; }
+.group { background: #222; color: #fff; 
+	display: inline-block; min-width: 210px; padding: 10px; margin: 10px; 
+	border-radius: 5px;
+}
+div { vertical-align: top; padding: 5px; }
+</style>
+</head>
+<body>
+
+<h1>Music Math</h1>
+
+<div>
+	<div>
+		<div>
+			<span><b>input bpm: </b></span><input id="fld_sourceBPM" value="140">
+		</div>
+		<div>
+			<span>decimals: </span><input id="fld_decimals" value="3">
+		</div>
+
+		<div class="group" style="display: inline-block;">
+			<div>
+				<span><b>pitch shift: </b></span><input id="fld_pitchshift" value="1">
+			</div>
+			<div id="result_shifted"></div>
+		</div>
+
+		<div style="display: inline-block; padding: 0px; margin: 0px; ">
+			<div class="group" style="display: inline-block;">
+				<div>
+					<span><b>bpm: </b></span><input id="fld_targetBPM" value="140">
+				</div>
+				<div id="result_bpmchange"></div>
+			</div>
+			<br>
+			<div class="group" style="display: inline-block;">
+				<div>
+					<span><b>speed%: </b></span><input id="fld_speed" value="100">
+				</div>
+				<div id="resut_speed"></div>
+			</div>
+			<br>
+		</div>
+			<div class="group" style="display: inline-block;">
+				<div><b>BPM : sec beat : beats per sec</b></div>
+				<div id="result_time" style="white-space: nowrap;"></div>
+			</div>
+	</div>
+</div>
+
+
+<script>
+
+function saturate(f) { return f < 0 ? 0 : f > 1 ? 1 : f; }
+function abs(f) { return f < 0 ? -f : f; }
+
+var rd = 1000;
+function round(f) { return (Math.round(f * rd) / rd); }
+
+
+function pow(b, e) { return Math.pow(b, e); }
+function exp(x) { return Math.exp(x); }
+function log(x) { return Math.log(x); }
+
+
+function PitchShiftBPM(BPM, PitchShift) {
+	//return BPM * exp((PitchShift * log(2) / 12));
+	return BPM * pow(2.0, (PitchShift / 12.0));
+}
+
+// % change = (NewBPM / OriginalBPM) * 100
+function BPMChangePercentage(inBPM, toBPM)
+{
+	return (toBPM / inBPM) * 100.0;
+}
+
+// Ratio = (OriginalBPM / NewBPM)* 100
+function BPMChangeRatio(inBPM, toBPM)
+{
+	return (inBPM / toBPM) * 100.0;
+}
+
+function BPMChangePitchShift(inBPM, toBPM)
+{
+	//return log(toBPM / inBPM) / log(pow(2, (1.0 / 12)));
+	return 12 * log(toBPM / inBPM) / log(2);
+}
+
+function BPMSpeed(inBPM, speed)
+{
+	return inBPM * (speed * 0.01);
+}
+function BPMSpeedPitchShift(speed)
+{
+	return 12 * log(speed * 0.01) / log(2);
+}
+
+// 60 / bpm = [time of 1 beat]
+// bpm = 60 / [time of 1 beat]
+function BPMBeatTime(inBPM)
+{
+	return 60.0 / inBPM;
+}
+function BeatsPerSecond(inBPM)
+{
+	return inBPM / 60.0;
+}
+
+// #############################
+
+function ShiftSignStr(i)
+{
+	return (i > 0 ? "+" : i == 0 ? " " : "") + round(i);
+}
+
+function colorToSigned24Bit(s) {
+	return (parseInt(s.substr(1), 16) << 8) / 256;
+}
+
+var rgbToHex = function (rgb) { 
+	var hex = Number(rgb).toString(16);
+	if (hex.length < 2) {
+		hex = "0" + hex;
+	}
+	return hex;
+};
+var fullColorHex = function(r,g,b) {
+	var red = rgbToHex(r);
+	var green = rgbToHex(g);
+	var blue = rgbToHex(b);
+	return red+green+blue;
+};
+var fullColorHex01 = function(r,g,b) {
+	return fullColorHex(Math.round(r*255),Math.round(g*255),Math.round(b*255));
+};
+
+function PitchShiftClr(i, b = 0, spos = 12, sneg = 6)
+{
+	i -= b;
+	if (i == 0) { return fullColorHex(255,255,255); }
+
+	var mid = saturate(1.0 - (abs(i) / (i > 0 ? spos : sneg)));
+	var pos = saturate(i / spos);
+
+	return fullColorHex01((i <= 0 ? 1 : 0), saturate(pos + mid), saturate(pos));
+}
+
+function PitchShiftStr(i, b = 0, spos = 12, sneg = 6)
+{
+	var inBPM = parseFloat(fld_sourceBPM.value);
+	var clrh = PitchShiftClr(i, b, spos, sneg);
+	var text = '';
+	text += '<div style="padding: 0; color: #' + clrh + ';">'
+	text += '<span style="display: inline-block; min-width: 60px; text-align: right;">' + ShiftSignStr(i) + '</span>';
+	text += '<span style="display: inline-block; min-width: 20px; text-align: center;"> : </span>';
+	text += '<span style="display: inline-block; min-width: 80px; text-align: left;">' + round(PitchShiftBPM(inBPM, i)) + '</span>';
+	text += '</div>';// + "<br>";
+	return text;
+}
+
+// #############################
+
+const fld_decimals = document.getElementById('fld_decimals');
+function UpdateDecimals(num) {
+	rd = Math.pow(10, num);
+}
+if(fld_decimals)
+	UpdateDecimals(parseFloat(fld_decimals.value));
+
+const fld_sourceBPM = document.getElementById('fld_sourceBPM');
+const resultSrcBPM = document.getElementById('resultSrcBPM');
+
+const fld_pitchshift = document.getElementById('fld_pitchshift');
+const result_shifted = document.getElementById('result_shifted');
+
+const fld_targetBPM = document.getElementById('fld_targetBPM');
+const result_bpmchange = document.getElementById('result_bpmchange');
+
+const fld_speed = document.getElementById('fld_speed');
+const resut_speed = document.getElementById('resut_speed');
+
+const result_time = document.getElementById('result_time');
+
+function RefreshIN(inBPM)
+{
+	var text = '';
+	var i;
+	for (i = -6; i <= 12; i++) {
+		text += PitchShiftStr(i);
+	}
+	if(resultSrcBPM) resultSrcBPM.innerHTML = text;
+}
+
+function RefreshSHIFT(shift)
+{
+	var inBPM = parseFloat(fld_sourceBPM.value);
+	var text = '';
+	text += '<div>' + inBPM + ' ' + ShiftSignStr(shift) +  ' = ' + round(PitchShiftBPM(inBPM, shift)) + ' BPM</div>';
+	for (i = -6; i <= 12; i++) {
+		text += PitchShiftStr(shift + i, shift, 6);
+	}
+	result_shifted.innerHTML = text;
+}
+
+const midclrhex = '#90FF80';
+
+function RefreshTBPM(tBPM)
+{
+	var iBPM = parseFloat(fld_sourceBPM.value);
+	
+	var text = '';
+	text += '<div><span style="color: ' + midclrhex + ';">' + round(BPMChangePercentage(iBPM, tBPM)) + '</span> %</div>';
+	text += '<div>ratio: <span style="color: ' + midclrhex + ';">' + round(BPMChangeRatio(iBPM, tBPM)) + '</span> </div>';
+	text += '<div>shift: <span style="color: ' + midclrhex + ';">' + ShiftSignStr(round(BPMChangePitchShift(iBPM, tBPM))) + '</span> </div>';
+	result_bpmchange.innerHTML = text;
+}
+
+function RefreshSpeed(speed)
+{
+	var iBPM = parseFloat(fld_sourceBPM.value);
+	
+	var text = '';
+	text += '<div><span style="color: ' + midclrhex + ';">' + round(BPMSpeed(iBPM, speed)) + '</span> BPM</div>';
+	text += '<div>shift: <span style="color: ' + midclrhex + ';">' + ShiftSignStr(round(BPMSpeedPitchShift(speed))) + '</span></div>';
+	resut_speed.innerHTML = text;
+}
+
+function RefreshTime()
+{
+	/*
+	var text = '';
+	for (i = -9; i <= 9; i++) {
+		var clrh = i == 0 ? 'FFFFFF' : '0080FF';
+		text += '<div style="padding: 0; color: #' + clrh + '">'
+		text += '<span style="display: inline-block; min-width: 50px; text-align: right;">' + (iBPM + i) + '</span>';
+		text += '<span style="display: inline-block; min-width: 20px; text-align: center;"> : </span>';
+		text += '<span style="display: inline-block; min-width: 50px; text-align: left;">' + round(BPMBeatTime(iBPM + i)) + '</span>';
+		text += '<span style="display: inline-block; min-width: 20px; text-align: center;"> : </span>';
+		text += '<span style="display: inline-block; min-width: 50px; text-align: left;">' + round(BeatsPerSecond(iBPM + i)) + '</span>';
+		text += '</div>';// + "<br>";
+	}
+	*/
+	
+	const size = 10;
+	var iBPM = parseFloat(fld_sourceBPM.value);
+	var tBPM = parseFloat(fld_targetBPM.value);
+	var bctr = Math.round((iBPM + tBPM) / 2);
+	var offs = Math.round(bctr - iBPM);
+	offs = offs < -size ? -size : offs > size ? size : offs;
+	
+	var sharedstyle = 'display: block; white-space: normal;padding: 0; ';
+	var txt1 = '';
+	var txt2 = '';
+	var txt3 = '';
+	var txtsep = '';
+	/*
+	for (i = -size; i <= size; i+=1) {
+		var j = i + offs;
+		var clrh = j == 0 ? 'FFFFFF' : (j == (tBPM-iBPM) ? '90C0FF' : '4090FF');
+		txtsep += '<div style="' + sharedstyle + ' color: #' + clrh + '; min-width: 20px; text-align: center;"> : </div>';
+		txt1 += '<div style="' + sharedstyle + '   color: #' + clrh + '; min-width: 50px; text-align: right;">' + round(iBPM + j) + '</div>';
+		txt2 += '<div style="' + sharedstyle + '   color: #' + clrh + '; min-width: 50px; text-align: left;">' + round(BPMBeatTime(iBPM + j)) + '</div>';
+		txt3 += '<div style="' + sharedstyle + '   color: #' + clrh + '; min-width: 50px; text-align: left;">' + round(BeatsPerSecond(iBPM + j)) + '</div>';
+	}
+	*/
+	
+	
+	var diff = tBPM - iBPM;
+	var re = diff - Math.floor(diff);
+	var step = 1 + (re / Math.floor(diff));
+	
+	for (i = -size; i <= size; i++) {
+		var j = (i+offs) * step;
+		var clrh = j == 0 ? 'FFFFFF' : (round(j) == round(tBPM-iBPM) ? '90C0FF' : '4090FF');
+		txtsep += '<div style="' + sharedstyle + ' color: #' + clrh + '; min-width: 20px; text-align: center;"> : </div>';
+		txt1 += '<div style="' + sharedstyle + '   color: #' + clrh + '; min-width: 50px; text-align: left;">' + round(iBPM + j) + '</div>';
+		txt2 += '<div style="' + sharedstyle + '   color: #' + clrh + '; min-width: 50px; text-align: left;">' + round(BPMBeatTime(iBPM + j)) + '</div>';
+		txt3 += '<div style="' + sharedstyle + '   color: #' + clrh + '; min-width: 50px; text-align: left;">' + round(BeatsPerSecond(iBPM + j)) + '</div>';
+	}
+	
+	var text = '<div style="padding: 0; ">';
+	
+	text += '<div style="display: inline-block; white-space: nowrap; padding: 0 10px ; ">' + txt1 + '</div>';
+	text += '<div style="display: inline-block; white-space: nowrap; padding: 0 5px ; ">' + txtsep+ '</div>';
+	text += '<div style="display: inline-block; white-space: nowrap; padding: 0 10px ; ">' + txt2 + '</div>';
+	text += '<div style="display: inline-block; white-space: nowrap; padding: 0 5px ; ">' + txtsep+ '</div>';
+	text += '<div style="display: inline-block; white-space: nowrap; padding: 0 10px ; ">' + txt3 + '</div>';
+	
+	text += '</div>';
+	result_time.innerHTML = text;
+}
+
+function RefreshAll()
+{
+	RefreshIN(parseFloat(fld_sourceBPM.value));
+	RefreshSHIFT(parseFloat(fld_pitchshift.value));
+	RefreshTBPM(parseFloat(fld_targetBPM.value));
+	RefreshSpeed(parseFloat(fld_speed.value));
+	RefreshTime();
+}
+
+RefreshAll();
+
+// #############################
+
+const inputHandler = function(e) {
+	var val = parseFloat(e.target.value);
+	RefreshIN(val);
+	RefreshAll();
+}
+fld_sourceBPM.addEventListener('input', inputHandler);
+fld_sourceBPM.addEventListener('propertychange', inputHandler); // for IE8
+
+
+const shift_inputHandler = function(e) {
+	var val = parseFloat(e.target.value);
+	RefreshSHIFT(val);
+	RefreshAll();
+}
+fld_pitchshift.addEventListener('input', shift_inputHandler);
+fld_pitchshift.addEventListener('propertychange', shift_inputHandler); // for IE8
+
+
+const tbpm_inputHandler = function(e) {
+	var val = parseFloat(e.target.value);
+	RefreshTBPM(val);
+	RefreshTime();
+}
+fld_targetBPM.addEventListener('input', tbpm_inputHandler);
+fld_targetBPM.addEventListener('propertychange', tbpm_inputHandler); // for IE8
+
+
+
+const speed_inputHandler = function(e) {
+	var val = parseFloat(e.target.value);
+	RefreshSpeed(val);
+}
+fld_speed.addEventListener('input', speed_inputHandler);
+fld_speed.addEventListener('propertychange', speed_inputHandler); // for IE8
+
+
+const decimals_inputHandler = function(e) {
+	var val = parseFloat(e.target.value);
+	UpdateDecimals(val);
+	RefreshAll();
+}
+fld_decimals.addEventListener('input', decimals_inputHandler);
+fld_decimals.addEventListener('propertychange', decimals_inputHandler); // for IE8
+
+
+</script>
+
+</body>
+</html> 
