@@ -278,7 +278,7 @@ function RefreshTime()
 	
 	var diff = tBPM - iBPM;
 	var re = diff - Math.floor(diff);
-	var step = 1 + (re / Math.floor(diff));
+	var step = round(diff) == 0 ? 1 : 1 + (re / Math.floor(diff));
 	
 	for (i = -size; i <= size; i++) {
 		var j = (i+offs) * step;
