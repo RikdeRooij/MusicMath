@@ -67,6 +67,7 @@ function abs(f) { return f < 0 ? -f : f; }
 
 var rd = 1000;
 function round(f) { return (Math.round(f * rd) / rd); }
+function roundd(f, d) { var r = Math.pow(10, d); return (Math.round(f * r) / r); }
 
 
 function pow(b, e) { return Math.pow(b, e); }
@@ -145,7 +146,8 @@ var fullColorHex01 = function(r,g,b) {
 	return fullColorHex(Math.round(r*255),Math.round(g*255),Math.round(b*255));
 };
 
-function PitchShiftClr(i, b = 0, spos = 12, sneg = 6)
+//function PitchShiftClr(i, b = 0, spos = 12, sneg = 6)
+function PitchShiftClr(i, b, spos, sneg)
 {
 	i -= b;
 	if (i == 0) { return fullColorHex(255,255,255); }
@@ -156,7 +158,8 @@ function PitchShiftClr(i, b = 0, spos = 12, sneg = 6)
 	return fullColorHex01((i <= 0 ? 1 : 0), saturate(pos + mid), saturate(pos));
 }
 
-function PitchShiftStr(i, b = 0, spos = 12, sneg = 6)
+//function PitchShiftStr(i, b = 0, spos = 12, sneg = 6)
+function PitchShiftStr(i, b, spos, sneg)
 {
 	var inBPM = parseFloat(fld_sourceBPM.value);
 	var clrh = PitchShiftClr(i, b, spos, sneg);
@@ -197,7 +200,7 @@ function RefreshIN(inBPM)
 	var text = '';
 	var i;
 	for (i = -6; i <= 12; i++) {
-		text += PitchShiftStr(i);
+		text += PitchShiftStr(i, 0, 12, 6);
 	}
 	if(resultSrcBPM) resultSrcBPM.innerHTML = text;
 }
@@ -208,7 +211,7 @@ function RefreshSHIFT(shift)
 	var text = '';
 	text += '<div>' + inBPM + ' ' + ShiftSignStr(shift) +  ' = ' + round(PitchShiftBPM(inBPM, shift)) + ' BPM</div>';
 	for (i = -6; i <= 12; i++) {
-		text += PitchShiftStr(shift + i, shift, 6);
+		text += PitchShiftStr(shift + i, shift, 6, 6);
 	}
 	result_shifted.innerHTML = text;
 }
@@ -274,7 +277,6 @@ function RefreshTime()
 		txt3 += '<div style="' + sharedstyle + '   color: #' + clrh + '; min-width: 50px; text-align: left;">' + round(BeatsPerSecond(iBPM + j)) + '</div>';
 	}
 	*/
-	
 	
 	var diff = tBPM - iBPM;
 	var re = diff - Math.floor(diff);
